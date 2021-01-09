@@ -83,7 +83,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>1.6.0</version>
                 <configuration>
-                    <mainClass>com.example.QuickstartApp</mainClass>
+                    <mainClass>com.example.DisasterAdviserApplication</mainClass>
                 </configuration>
             </plugin>
         </plugins>
