@@ -1,8 +1,9 @@
-package com.example.integration;
+package com.example.actors.integration;
 
 import akka.actor.testkit.typed.javadsl.TestKitJunitResource;
 import akka.actor.testkit.typed.javadsl.TestProbe;
 import akka.actor.typed.ActorRef;
+import com.example.actors.DisasterNasaSource;
 import junit.framework.TestCase;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -14,13 +15,13 @@ public class DisasterNasaSourceActorTest extends TestCase {
 
     @Test
     public void testDisasterNasa() {
-        TestProbe<DisasterNasaSourceActor.ReadDisasters> probe =
-                testKit.createTestProbe(DisasterNasaSourceActor.ReadDisasters.class);
-        ActorRef<DisasterNasaSourceActor.Command> disasterActor = testKit.spawn(DisasterNasaSourceActor.create());
-        disasterActor.tell(new DisasterNasaSourceActor.ReadDisasters());
+        TestProbe<DisasterNasaSource.ReadDisasters> probe =
+                testKit.createTestProbe(DisasterNasaSource.ReadDisasters.class);
+        ActorRef<DisasterNasaSource.Command> disasterActor = testKit.spawn(DisasterNasaSource.create());
+        disasterActor.tell(new DisasterNasaSource.ReadDisasters());
+
+        // TODO: Check if disaster was passed futher
         //DisasterNasaSourceActor.Command response = probe.receiveMessage();
         //assertEquals();
-
     }
-
 }

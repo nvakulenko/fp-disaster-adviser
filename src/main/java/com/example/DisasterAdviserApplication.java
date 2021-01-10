@@ -1,19 +1,10 @@
 package com.example;
 
-import akka.NotUsed;
-import akka.actor.typed.ActorRef;
-import akka.actor.typed.Behavior;
-import akka.http.javadsl.ConnectHttp;
 import akka.http.javadsl.Http;
 import akka.http.javadsl.ServerBinding;
-import akka.http.javadsl.model.HttpRequest;
-import akka.http.javadsl.model.HttpResponse;
 import akka.http.javadsl.server.Route;
-import akka.stream.Materializer;
-import akka.stream.javadsl.Flow;
-import akka.actor.typed.javadsl.Adapter;
-import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.ActorSystem;
+import com.example.actors.DisasterNasaSource;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.CompletionStage;
@@ -40,7 +31,9 @@ public class DisasterAdviserApplication {
     // #start-http-server
 
     public static void main(String[] args) throws Exception {
-
+        ActorSystem<DisasterNasaSource.Command> disasterSystem =
+                ActorSystem.create(DisasterNasaSource.create(), "disaster-system");
+        disasterSystem.tell(new DisasterNasaSource.ReadDisasters());
     }
 
 }

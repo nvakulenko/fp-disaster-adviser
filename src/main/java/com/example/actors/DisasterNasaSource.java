@@ -1,4 +1,4 @@
-package com.example;
+package com.example.actors;
 
 import akka.actor.typed.Behavior;
 import akka.actor.typed.PostStop;
@@ -6,6 +6,11 @@ import akka.actor.typed.javadsl.AbstractBehavior;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
+import akka.http.javadsl.Http;
+import akka.http.javadsl.model.HttpRequest;
+import akka.http.javadsl.model.HttpResponse;
+
+import java.util.concurrent.CompletionStage;
 
 // Actor: Source of disasters is Nasa API
 public class DisasterNasaSource extends AbstractBehavior<DisasterNasaSource.Command> {
@@ -38,6 +43,8 @@ public class DisasterNasaSource extends AbstractBehavior<DisasterNasaSource.Comm
 
     private Behavior<Command> onReadDisasters(ReadDisasters readDisasters) {
         getContext().getLog().info("DisasterNasaSourceActor onReadDisasters");
+        HttpRequest httpRequest = HttpRequest.GET(NASA_URI);
+
         return this;
     }
 
