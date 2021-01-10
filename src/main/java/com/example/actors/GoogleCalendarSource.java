@@ -1,4 +1,4 @@
-package com.example.integration;
+package com.example;
 
 import akka.actor.typed.Behavior;
 import akka.actor.typed.javadsl.AbstractBehavior;
@@ -6,19 +6,19 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
 
-public class MongoDbSinkActor extends AbstractBehavior<String> {
+public class GoogleCalendarEventsSource extends AbstractBehavior<String> {
+
     static Behavior<String> create() {
-        return Behaviors.setup(MongoDbSinkActor::new);
+        return Behaviors.setup(GoogleCalendarEventsSource::new);
     }
 
-    private MongoDbSinkActor(ActorContext<String> context) {
+    private GoogleCalendarEventsSource(ActorContext<String> context) {
         super(context);
     }
 
-    // TODO: save in mongo
+    // TODO: Get Google Events here and send to Analyzer if there some disasters on event places
     @Override
     public Receive<String> createReceive() {
-        // print to console for now
         return null;
     }
 }
