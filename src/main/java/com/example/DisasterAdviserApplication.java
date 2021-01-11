@@ -31,6 +31,14 @@ public class DisasterAdviserApplication {
     // #start-http-server
 
     public static void main(String[] args) throws Exception {
+        // min
+        // 1 - NASA API <- (pull) - Disaster Extractor - OUT -> DB (Mongo Docker)
+        //                                             - OUT -> Web Socket -> (PUSH) Final App client
+        // 2 - Client subscribes his google calendar to events
+        // Client - (subscribe email Web Socket)| -> Event checker         -> Google calendar
+        // 3 -                       Web socket | <- DB <- Check disasters <- Google calendar event
+
+        // max
         ActorSystem<DisasterNasaSource.Command> disasterSystem =
                 ActorSystem.create(DisasterNasaSource.create(), "disaster-system");
         disasterSystem.tell(new DisasterNasaSource.ReadDisasters());
