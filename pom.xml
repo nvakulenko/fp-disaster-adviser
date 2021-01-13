@@ -11,6 +11,8 @@
         <akka.http.version>10.2.2</akka.http.version>
         <scala.binary.version>2.13</scala.binary.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <akka-stream-alpakka-mongodb_2.13.version>${akka-stream-alpakka-json-streaming_2.13.version}</akka-stream-alpakka-mongodb_2.13.version>
+        <akka-stream-alpakka-json-streaming_2.13.version>2.0.2</akka-stream-alpakka-json-streaming_2.13.version>
     </properties>
 
     <dependencyManagement>
@@ -59,6 +61,36 @@
             <artifactId>akka-actor-testkit-typed_${scala.binary.version}</artifactId>
             <version>${akka.version}</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.lightbend.akka</groupId>
+            <artifactId>akka-stream-alpakka-mongodb_${scala.binary.version}</artifactId>
+            <version>${akka-stream-alpakka-mongodb_2.13.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.lightbend.akka</groupId>
+            <artifactId>akka-stream-alpakka-json-streaming_${scala.binary.version}</artifactId>
+            <version>${akka-stream-alpakka-json-streaming_2.13.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>2.10.5</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.jsurfer</groupId>
+            <artifactId>jsurfer-jackson</artifactId>
+            <version>1.6.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.jsurfer</groupId>
+            <artifactId>jsurfer-core</artifactId>
+            <version>1.6.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-stream_${scala.binary.version}</artifactId>
+            <version>${akka.version}</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

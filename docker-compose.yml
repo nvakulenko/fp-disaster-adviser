@@ -1,0 +1,10 @@
+services:
+  my-mongoDB:
+    image: mongo:latest
+    volumes:
+      - db-data:/data/db
+      - mongo-config:/data/configdb
+
+volumes:
+  db-data:
+  mongo-config:
