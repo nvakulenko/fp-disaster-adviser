@@ -1,8 +1,8 @@
 package com.example.actors;
 
 import akka.Done;
-import akka.actor.ActorSelection;
 import akka.actor.typed.ActorRef;
+import akka.actor.typed.ActorSystem;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.PostStop;
 import akka.actor.typed.javadsl.AbstractBehavior;
@@ -10,17 +10,18 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
 import akka.http.javadsl.Http;
+import akka.http.javadsl.marshallers.jackson.Jackson;
 import akka.http.javadsl.model.HttpRequest;
 import akka.http.javadsl.model.HttpResponse;
 import akka.http.javadsl.model.StatusCodes;
+import akka.http.javadsl.unmarshalling.Unmarshaller;
 import akka.stream.alpakka.json.javadsl.JsonReader;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
 import akka.util.ByteString;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import scala.concurrent.ExecutionContextExecutor;
-import static akka.pattern.PatternsCS.pipe;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 
@@ -29,10 +30,39 @@ public class DisasterNasaSource extends AbstractBehavior<DisasterNasaSource.Comm
 
     public interface Command{}
 
-    public static final class ReadDisasters implements Command {
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class NasaDisasterEvent {
+        public NasaDisasterEvent() {}
+        public String id;
+        public String title;
+        public String closed;
+        public List<DisasterNasaSource.NasaDisasterCategories> categories;
+        public List<DisasterNasaSource.NasaDisasterGeometry> geometry;
     }
 
-    private static final String NASA_URI = "https://eonet.sci.gsfc.nasa.gov/api/v3/events?status=open";
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class NasaDisasterCategories {
+        public NasaDisasterCategories() {}
+        public String id;
+        public String title;
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class NasaDisasterGeometry {
+        public NasaDisasterGeometry(){}
+        public String date;
+        public String type;
+        public Long[] coordinates;
+    }
+
+    public static final class ReadDisasters implements Command {
+        final ActorRef<MongoDbSink.Command> replyTo;
+        public ReadDisasters(ActorRef<MongoDbSink.Command> replyTo) {
+            this.replyTo = replyTo;
+        }
+    }
+
+    private static final String NASA_URI = "https://eonet.sci.gsfc.nasa.gov/api/v3/events";
     final Http http = Http.get(getContext().getSystem());
     final ExecutionContextExecutor dispatcher = getContext().getExecutionContext();
 
@@ -55,36 +85,23 @@ public class DisasterNasaSource extends AbstractBehavior<DisasterNasaSource.Comm
                 .build();
     }
 
-    private Behavior<Command> onReadDisasters(ReadDisasters readDisasters) {
+    private Behavior<Command> onReadDisasters(final ReadDisasters readDisasters) {
         getContext().getLog().info("DisasterNasaSourceActor onReadDisasters");
-//        CompletionStage<HttpResponse> response =
-//                Http.get(getContext().getSystem()).singleRequest(HttpRequest.GET(NASA_URI));
-//
-//        //ActorRef<MongoDbSink.Command> actorRef = getContext().getSystem().systemActorOf(MongoDbSink.create(), "nasa-mongo-db", null);
-//        response
-//                .thenAccept(
-//                        done -> {
-//                            System.out.println("Done!");
-//                            System.out.println(done.entity());
-//                        });
+
+        Unmarshaller<ByteString, NasaDisasterEvent> unmarshaller =
+                Jackson.byteStringUnmarshaller(NasaDisasterEvent.class);
+        ActorSystem<Void> system = getContext().getSystem();
 
         CompletionStage<Done> completion =
                 Source.single(HttpRequest.GET(NASA_URI)) // : HttpRequest
                         .mapAsync(1, http::singleRequest) // : HttpResponse
                         .flatMapConcat(this::extractEntityData)
                         .via(JsonReader.select("$.events[*]"))
-                        .runWith(Sink.foreach(bs -> System.out.println(bs.utf8String())), getContext().getSystem());
-
-//        .mapAsync(1, http::singleRequest) // : HttpResponse
-//                .flatMapConcat(this::extractEntityData) // : ByteString
-//                .via(CsvParsing.lineScanner()) // : List<ByteString>
-//                .via(CsvToMap.toMap()) // : Map<String, ByteString>
-//                .map(this::cleanseCsvData) // : Map<String, String>
-//                .map(this::toJson) // : String
-//                .map(elem ->
-//                        new ProducerRecord<String, String>(
-//                                "topic1", elem) // : Kafka ProducerRecord
-//                )
+                        .mapAsync(1, r -> unmarshaller.unmarshal(r, system))
+                        .runWith(Sink.foreach(in ->
+                                    //System.out.println("id = " + in.id + " cat =" + in.categories.size());
+                            readDisasters.replyTo.tell(new MongoDbSink.WriteDisaster(in)))
+                        , system);
         completion
                 .thenAccept(
                         done -> {

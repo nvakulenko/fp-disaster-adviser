@@ -18,40 +18,39 @@ import org.bson.codecs.configuration.CodecRegistries;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 
-import java.util.List;
 import java.util.concurrent.CompletionStage;
 
 public class MongoDbSink extends AbstractBehavior<MongoDbSink.Command> {
 
     private final MongoClient client;
     private final MongoDatabase db;
-    private final MongoCollection<Disaster> disastersColl;
+    private final MongoCollection<DisasterEntity> disastersColl;
 
     public interface Command{}
 
-    public class WriteDisaster implements Command {
-        private List<Disaster> disasters;
-        public WriteDisaster(List<Disaster> disasters) {
-            this.disasters = disasters;
+    public static class WriteDisaster implements Command {
+        public DisasterNasaSource.NasaDisasterEvent disaster;
+        public WriteDisaster(DisasterNasaSource.NasaDisasterEvent disaster) {
+            this.disaster = disaster;
         }
-        public List<Disaster> getDisasters() {
-            return disasters;
+        public DisasterNasaSource.NasaDisasterEvent getDisaster() {
+            return disaster;
         }
     }
 
-    static Behavior<Command> create() {
+    public static Behavior<Command> create() {
         return Behaviors.setup(MongoDbSink::new);
     }
 
     private MongoDbSink(ActorContext<Command> context) {
         super(context);
 
-        PojoCodecProvider codecProvider = PojoCodecProvider.builder().register(Disaster.class).build();
+        PojoCodecProvider codecProvider = PojoCodecProvider.builder().register(DisasterEntity.class).build();
         CodecRegistry codecRegistry = CodecRegistries.fromProviders(codecProvider, new ValueCodecProvider());
 
         client = MongoClients.create("mongodb://localhost:27017");
         db = client.getDatabase("MongoSourceTest");
-        disastersColl = db.getCollection("disasters", Disaster.class).withCodecRegistry(codecRegistry);
+        disastersColl = db.getCollection("disasters", DisasterEntity.class).withCodecRegistry(codecRegistry);
     }
 
     // TODO: save in mongo
@@ -65,10 +64,26 @@ public class MongoDbSink extends AbstractBehavior<MongoDbSink.Command> {
     }
 
     private Behavior<MongoDbSink.Command> onWriteDisasters(WriteDisaster writeDisasters) {
-        getContext().getLog().info("DisasterNasaSourceActor onReadDisasters");
-        final CompletionStage<Done> completion =
-                Source.from(writeDisasters.getDisasters()).runWith(MongoSink.insertOne(disastersColl),
-                        getContext().getSystem());
+        getContext().getLog().info("MongoDbSink onReadDisasters");
+
+        DisasterNasaSource.NasaDisasterEvent disaster = writeDisasters.getDisaster();
+        getContext().getLog().info("Disaster ID = " + disaster.id);
+
+        DisasterEntity disasterEntity = new DisasterEntity();
+        disasterEntity.setNasaId(disaster.id);
+        disasterEntity.setTitle(disaster.title);
+        disasterEntity.setClosed(disaster.closed);
+//        disasterEntity.setCategories(disaster.categories);
+//        disasterEntity.setGeometry(disaster.geometry);
+
+        CompletionStage<Done> completion =
+                Source.single(disasterEntity)
+                        .runWith(MongoSink.insertOne(disastersColl), getContext().getSystem());
+        completion
+                .thenAccept(
+                        done -> {
+                            System.out.println("Done write to db!");
+                        });
         return this;
     }
 

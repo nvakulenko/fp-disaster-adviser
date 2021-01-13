@@ -1,10 +1,11 @@
 services:
-  my-mongoDB:
+  mongodb:
     image: mongo:latest
+    container_name: "mongodb"
+    environment:
+      - MONGO_DATA_DIR=/data/db
+      - MONGO_LOG_DIR=/dev/null
     volumes:
-      - db-data:/data/db
-      - mongo-config:/data/configdb
-
-volumes:
-  db-data:
-  mongo-config:
+      - ./data/db:/data/db
+    ports:
+      - 27017:27017

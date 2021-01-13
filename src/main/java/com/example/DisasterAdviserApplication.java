@@ -6,6 +6,7 @@ import akka.http.javadsl.server.Route;
 import akka.actor.typed.ActorSystem;
 import com.example.actors.DisasterNasaSource;
 import com.example.actors.GoogleCalendarSource;
+import com.example.actors.MongoDbSink;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.CompletionStage;
@@ -42,7 +43,9 @@ public class DisasterAdviserApplication {
         // max
         ActorSystem<DisasterNasaSource.Command> disasterSystem =
                 ActorSystem.create(DisasterNasaSource.create(), "disaster-system");
-        disasterSystem.tell(new DisasterNasaSource.ReadDisasters());
+        ActorSystem<MongoDbSink.Command> mongoDisasterSink =
+                ActorSystem.create(MongoDbSink.create(), "mongo-write-system");
+        disasterSystem.tell(new DisasterNasaSource.ReadDisasters(mongoDisasterSink));
 
         ActorSystem<GoogleCalendarSource.Command> calendarSystem =
                 ActorSystem.create(GoogleCalendarSource.create(), "calendar-system");
