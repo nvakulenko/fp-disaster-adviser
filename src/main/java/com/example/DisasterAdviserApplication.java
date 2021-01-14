@@ -72,19 +72,6 @@ public class DisasterAdviserApplication {
                 ActorSystem.create(WSActor.create(), "ws");
 
         Materializer mat = Materializer.matFromSystem(wssystem);
-        final Flow<Message, Message, NotUsed> greeter = Flow.of(Message.class).mapConcat(msg -> {
-            if (msg instanceof TextMessage) {
-                final TextMessage tm = (TextMessage) msg;
-                final TextMessage ret = TextMessage.create(Source.single("Hello ").concat(tm.getStreamedText()).concat(Source.single("!")));
-                return Collections.singletonList(ret);
-            } else if (msg instanceof BinaryMessage) {
-                final BinaryMessage bm = (BinaryMessage) msg;
-                bm.getStreamedData().runWith(Sink.ignore(), mat);
-                return Collections.emptyList();
-            } else {
-                throw new IllegalArgumentException("Unsupported message type!");
-            }
-        });
 
         Source<Message, ActorRef> someSource = Source.actorRef(
                 elem -> {
@@ -109,7 +96,7 @@ public class DisasterAdviserApplication {
                         actorRefSourcePair.second()
                 );
 
-        Route route = path("greeter", () ->
+        Route route = path("calendar", () ->
                 handleWebSocketMessages(otherFlow)
         );
 
