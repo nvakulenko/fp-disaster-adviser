@@ -1,5 +1,8 @@
-package com.example.actors;
+package com.example.actors.entity;
 
+import com.example.actors.DisasterNasaSource;
+
+import java.time.Instant;
 import java.util.List;
 
 public class DisasterEntity {
@@ -7,11 +10,13 @@ public class DisasterEntity {
     private String nasaId;
     private String title;
     private String closed;
-    private List<DisasterNasaSource.NasaDisasterCategories> categories;
-    private List<DisasterNasaSource.NasaDisasterGeometry> geometry;
+    private Instant date;
+    private List<CategoryEntity> categories;
+    private LocationEntity location;
 
     public DisasterEntity() {
     }
+
     public DisasterEntity(Integer _id) {
         this._id = _id;
     }
@@ -44,19 +49,27 @@ public class DisasterEntity {
         this.closed = closed;
     }
 
-    public List<DisasterNasaSource.NasaDisasterCategories> getCategories() {
+    public LocationEntity getLocation() {
+        return location;
+    }
+
+    public void setLocation(LocationEntity location) {
+        this.location = location;
+    }
+
+    public Instant getDate() {
+        return date;
+    }
+
+    public void setDate(Instant date) {
+        this.date = date;
+    }
+
+    public List<CategoryEntity> getCategories() {
         return categories;
     }
 
-    public void setCategories(List<DisasterNasaSource.NasaDisasterCategories> categories) {
+    public void setCategories(List<CategoryEntity> categories) {
         this.categories = categories;
-    }
-
-    public List<DisasterNasaSource.NasaDisasterGeometry> getGeometry() {
-        return geometry;
-    }
-
-    public void setGeometry(List<DisasterNasaSource.NasaDisasterGeometry> geometry) {
-        this.geometry = geometry;
     }
 }

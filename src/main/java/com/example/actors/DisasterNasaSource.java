@@ -22,6 +22,8 @@ import akka.util.ByteString;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import scala.concurrent.ExecutionContextExecutor;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 
@@ -52,7 +54,7 @@ public class DisasterNasaSource extends AbstractBehavior<DisasterNasaSource.Comm
         public NasaDisasterGeometry(){}
         public String date;
         public String type;
-        public Long[] coordinates;
+        public BigDecimal[] coordinates;
     }
 
     public static final class ReadDisasters implements Command {
