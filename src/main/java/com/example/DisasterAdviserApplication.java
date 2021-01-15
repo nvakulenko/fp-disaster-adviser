@@ -1,14 +1,30 @@
 package com.example;
 
+import akka.NotUsed;
+import akka.actor.ActorRef;
 import akka.http.javadsl.Http;
 import akka.http.javadsl.ServerBinding;
+import akka.http.javadsl.model.ws.Message;
+import akka.http.javadsl.model.ws.TextMessage;
 import akka.http.javadsl.server.Route;
 import akka.actor.typed.ActorSystem;
+import akka.japi.Pair;
+import akka.stream.CompletionStrategy;
+import akka.stream.Materializer;
+import akka.stream.OverflowStrategy;
+import akka.stream.javadsl.*;
 import com.example.actors.DisasterNasaSource;
 import com.example.actors.GoogleCalendarSource;
 import com.example.actors.MongoDbSink;
+import com.example.actors.WSActor;
 
+import static akka.http.javadsl.server.Directives.path;
+import static akka.http.javadsl.server.Directives.handleWebSocketMessages;
+//import akka.actor.ActorSystem;
 import java.net.InetSocketAddress;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 
 //#main-class
@@ -49,7 +65,40 @@ public class DisasterAdviserApplication {
 
         ActorSystem<GoogleCalendarSource.Command> calendarSystem =
                 ActorSystem.create(GoogleCalendarSource.create(), "calendar-system");
-        calendarSystem.tell(new GoogleCalendarSource.ReadEvents());
+
+        ActorSystem<WSActor.Command> wssystem =
+                ActorSystem.create(WSActor.create(), "ws");
+
+        Materializer mat = Materializer.matFromSystem(wssystem);
+
+        Source<Message, ActorRef> someSource = Source.actorRef(
+                elem -> {
+                    if (!(elem instanceof TextMessage)) return Optional.of(CompletionStrategy.immediately());
+                    else return Optional.empty();
+                },
+                elem -> Optional.empty(),
+                8,
+                OverflowStrategy.dropNew()
+        );
+
+        Pair<ActorRef, Source<Message, NotUsed>> actorRefSourcePair = someSource.preMaterialize(wssystem);
+
+        someSource.runWith(Sink.ignore(), wssystem);
+        actorRefSourcePair.second().runWith(Sink.ignore(), wssystem);
+
+        Flow<Message, Message, NotUsed> otherFlow =
+                Flow.fromSinkAndSource(
+                        Sink.foreach(msg -> {
+                            calendarSystem.tell(new GoogleCalendarSource.ReadEvents(actorRefSourcePair.first(), msg.asTextMessage().getStrictText()));
+                        }),
+                        actorRefSourcePair.second()
+                );
+
+        Route route = path("calendar", () ->
+                handleWebSocketMessages(otherFlow)
+        );
+
+        startHttpServer(route, wssystem);
     }
 }
 
