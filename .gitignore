@@ -25,6 +25,12 @@ buildNumber.properties
 .mvn/wrapper/maven-wrapper.jar
 
 ##############################
+## Mongo DB
+##############################
+/data/
+/data/db/
+
+##############################
 ## IntelliJ
 ##############################
 out/
@@ -33,3 +39,5 @@ out/
 *.iml
 *.ipr
 *.iws
+
+

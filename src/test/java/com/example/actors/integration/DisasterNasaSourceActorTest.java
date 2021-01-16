@@ -18,7 +18,7 @@ public class DisasterNasaSourceActorTest extends TestCase {
         TestProbe<DisasterNasaSource.ReadDisasters> probe =
                 testKit.createTestProbe(DisasterNasaSource.ReadDisasters.class);
         ActorRef<DisasterNasaSource.Command> disasterActor = testKit.spawn(DisasterNasaSource.create());
-        disasterActor.tell(new DisasterNasaSource.ReadDisasters());
+        //disasterActor.tell(new DisasterNasaSource.ReadDisasters());
 
         // TODO: Check if disaster was passed futher
         //DisasterNasaSourceActor.Command response = probe.receiveMessage();
