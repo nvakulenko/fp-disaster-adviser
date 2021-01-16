@@ -8,6 +8,7 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
 import akka.stream.alpakka.mongodb.javadsl.MongoSink;
+import akka.stream.alpakka.mongodb.javadsl.MongoSource;
 import akka.stream.javadsl.Source;
 import com.example.actors.entity.CategoryEntity;
 import com.example.actors.entity.DisasterEntity;
@@ -46,6 +47,13 @@ public class MongoDbSink extends AbstractBehavior<MongoDbSink.Command> {
         }
     }
 
+    public static class GetDisasterByLocation implements Command {
+        public LocationToPointMapper.GeocodingLocation locationPoint;
+        public GetDisasterByLocation(LocationToPointMapper.GeocodingLocation locationPoint) {
+            this.locationPoint = locationPoint;
+        }
+    }
+
     public static Behavior<Command> create() {
         return Behaviors.setup(MongoDbSink::new);
     }
@@ -66,6 +74,7 @@ public class MongoDbSink extends AbstractBehavior<MongoDbSink.Command> {
         getContext().getLog().info("Mongo db write");
         return newReceiveBuilder()
                 .onMessage(WriteDisaster.class, this::onWriteDisasters)
+                .onMessage(GetDisasterByLocation.class, this::onGetDisastersByLocation)
                 .onSignal(PostStop.class, signal -> onPostStop())
                 .build();
     }
@@ -108,6 +117,15 @@ public class MongoDbSink extends AbstractBehavior<MongoDbSink.Command> {
 
     private MongoDbSink onPostStop() {
         getContext().getLog().info("DisasterNasaSourceActor stopped");
+        return this;
+    }
+
+    private Behavior<MongoDbSink.Command> onGetDisastersByLocation(GetDisasterByLocation getDisasterByLocation) {
+        LocationToPointMapper.GeocodingLocation locationPoint = getDisasterByLocation.locationPoint;
+//        MongoSource.create(disastersColl.find())
+//                .filter(disaster -> {
+//                    disaster.getLocation().getCoordinates()
+//                } );
         return this;
     }
 }

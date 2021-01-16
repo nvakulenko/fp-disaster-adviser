@@ -13,10 +13,7 @@ import akka.stream.CompletionStrategy;
 import akka.stream.Materializer;
 import akka.stream.OverflowStrategy;
 import akka.stream.javadsl.*;
-import com.example.actors.DisasterNasaSource;
-import com.example.actors.GoogleCalendarSource;
-import com.example.actors.MongoDbSink;
-import com.example.actors.WSActor;
+import com.example.actors.*;
 
 import static akka.http.javadsl.server.Directives.path;
 import static akka.http.javadsl.server.Directives.handleWebSocketMessages;
@@ -65,6 +62,10 @@ public class DisasterAdviserApplication {
 
         ActorSystem<GoogleCalendarSource.Command> calendarSystem =
                 ActorSystem.create(GoogleCalendarSource.create(), "calendar-system");
+
+        ActorSystem<LocationToPointMapper.Command> locationSystem =
+                ActorSystem.create(LocationToPointMapper.create(), "location-system");
+        locationSystem.tell(new LocationToPointMapper.GetPointByLocation("Lviv", null));
 
         ActorSystem<WSActor.Command> wssystem =
                 ActorSystem.create(WSActor.create(), "ws");

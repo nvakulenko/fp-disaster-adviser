@@ -1,0 +1,48 @@
+{
+  type: "FeatureCollection",
+  query: [
+    "lviv"
+  ],
+  features: [
+    {
+      id: "region.9795396053432810",
+      type: "Feature",
+      place_type: [
+        "region"
+      ],
+      relevance: 1,
+      properties: {
+        wikidata: "Q164193",
+        short_code: "UA-46"
+      },
+      text: "Lviv",
+      place_name: "Lviv, Ukraine",
+      bbox: [
+        22.6408300003158,
+        48.7188250005204,
+        25.4286295179306,
+        50.6462449799586
+      ],
+      center: [
+        23.95028,
+        49.7175
+      ],
+      geometry: {
+        type: "Point",
+        coordinates: [
+          23.95028,
+          49.7175
+        ]
+      },
+      context: [
+        {
+          id: "country.11871993712476590",
+          wikidata: "Q212",
+          short_code: "ua",
+          text: "Ukraine"
+        }
+      ]
+    }
+  ],
+  attribution: "NOTICE: © 2021 Mapbox and its suppliers. All rights reserved. Use of this data is subject to the Mapbox Terms of Service (https://www.mapbox.com/about/maps/). This response and the information it contains may not be retained. POI(s) provided by Foursquare."
+}

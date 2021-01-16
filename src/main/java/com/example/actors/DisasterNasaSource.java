@@ -120,17 +120,6 @@ public class DisasterNasaSource extends AbstractBehavior<DisasterNasaSource.Comm
         }
     }
 
-//    @Override
-//    public Receive createReceive() {
-//        return receiveBuilder()
-//                .match(String.class, url -> pipe(fetch(url), dispatcher).to(self()))
-//                .build();
-//    }
-//
-//    CompletionStage<HttpResponse> fetch(String url) {
-//        return http.singleRequest(HttpRequest.create(url));
-//    }
-
     private DisasterNasaSource onPostStop() {
         getContext().getLog().info("DisasterNasaSourceActor stopped");
         return this;
