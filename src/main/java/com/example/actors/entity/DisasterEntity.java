@@ -1,14 +1,22 @@
 package com.example.actors.entity;
 
 import com.example.actors.DisasterNasaSource;
+import org.bson.codecs.pojo.annotations.BsonId;
+import org.bson.codecs.pojo.annotations.BsonProperty;
+import org.bson.types.ObjectId;
 
 import java.time.Instant;
 import java.util.List;
 
 public class DisasterEntity {
-    private Integer _id;
+    @BsonProperty("_id")
+    @BsonId
+    private ObjectId _id;
+    @BsonProperty("nasaId")
     private String nasaId;
+    @BsonProperty("title")
     private String title;
+    @BsonProperty("closed")
     private String closed;
     private Instant date;
     private List<CategoryEntity> categories;
@@ -17,13 +25,13 @@ public class DisasterEntity {
     public DisasterEntity() {
     }
 
-    public DisasterEntity(Integer _id) {
+    public DisasterEntity(ObjectId _id) {
         this._id = _id;
     }
-    public void setId(Integer _id) {
+    public void setId(ObjectId _id) {
         this._id = _id;
     }
-    public Integer getId() {
+    public ObjectId getId() {
         return _id;
     }
     public String getNasaId() {

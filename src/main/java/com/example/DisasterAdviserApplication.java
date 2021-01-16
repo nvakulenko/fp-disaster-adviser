@@ -14,14 +14,14 @@ import akka.stream.Materializer;
 import akka.stream.OverflowStrategy;
 import akka.stream.javadsl.*;
 import com.example.actors.*;
-import com.example.actors.DisasterNasaSource;
 import com.example.actors.GoogleCalendarSource;
 import com.example.actors.WSActor;
-import com.example.actors.MongoDbSink;
+import com.example.actors.MongoDbActor;
 
 import static akka.http.javadsl.server.Directives.path;
 import static akka.http.javadsl.server.Directives.handleWebSocketMessages;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 
@@ -57,9 +57,17 @@ public class DisasterAdviserApplication {
         // max
         ActorSystem<DisasterNasaSource.Command> disasterSystem =
                 ActorSystem.create(DisasterNasaSource.create(), "disaster-system");
-        ActorSystem<MongoDbSink.Command> mongoDisasterSink =
-                ActorSystem.create(MongoDbSink.create(), "mongo-system");
+        ActorSystem<MongoDbActor.Command> mongoDisasterSink =
+                ActorSystem.create(MongoDbActor.create(), "mongo-system");
         disasterSystem.tell(new DisasterNasaSource.ReadDisasters(mongoDisasterSink));
+
+//        LocationToPointMapper.GeocodingLocation locationPoint = new LocationToPointMapper.GeocodingLocation();
+//        locationPoint.features = new ArrayList<>();
+//        LocationToPointMapper.GeocodingFeature geocodingFeature = new LocationToPointMapper.GeocodingFeature();
+//        geocodingFeature.geometry = new LocationToPointMapper.GeocodingGeometry();
+//        geocodingFeature.geometry.coordinates = new Double[]{148.42, -5.525};
+//        locationPoint.features.add(geocodingFeature);
+//        mongoDisasterSink.tell(new MongoDbActor.GetDisasterByLocation(locationPoint));
 
         ActorSystem<GoogleCalendarSource.Command> calendarSystem =
                 ActorSystem.create(GoogleCalendarSource.create(), "calendar-system");

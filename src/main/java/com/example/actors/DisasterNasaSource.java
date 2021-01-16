@@ -22,8 +22,6 @@ import akka.util.ByteString;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import scala.concurrent.ExecutionContextExecutor;
 
-import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 
@@ -58,8 +56,8 @@ public class DisasterNasaSource extends AbstractBehavior<DisasterNasaSource.Comm
     }
 
     public static final class ReadDisasters implements Command {
-        final ActorRef<MongoDbSink.Command> replyTo;
-        public ReadDisasters(ActorRef<MongoDbSink.Command> replyTo) {
+        final ActorRef<MongoDbActor.Command> replyTo;
+        public ReadDisasters(ActorRef<MongoDbActor.Command> replyTo) {
             this.replyTo = replyTo;
         }
     }
@@ -102,7 +100,7 @@ public class DisasterNasaSource extends AbstractBehavior<DisasterNasaSource.Comm
                         .mapAsync(1, r -> unmarshaller.unmarshal(r, system))
                         .runWith(Sink.foreach(in ->
                                     //System.out.println("id = " + in.id + " cat =" + in.categories.size());
-                            readDisasters.replyTo.tell(new MongoDbSink.WriteDisaster(in)))
+                            readDisasters.replyTo.tell(new MongoDbActor.WriteDisaster(in)))
                         , system);
         completion
                 .thenAccept(

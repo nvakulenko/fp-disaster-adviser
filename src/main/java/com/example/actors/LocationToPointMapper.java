@@ -80,7 +80,7 @@ public class LocationToPointMapper extends AbstractBehavior<LocationToPointMappe
     public static class GeocodingGeometry {
         public GeocodingGeometry(){}
         public String type;
-        public BigDecimal[] coordinates;
+        public Double[] coordinates;
     }
 
     private Behavior<Command> onGetPointByLocation(GetPointByLocation command) {
