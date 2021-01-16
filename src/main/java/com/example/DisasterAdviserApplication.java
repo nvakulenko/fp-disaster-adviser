@@ -17,14 +17,16 @@ import com.example.actors.*;
 import com.example.actors.GoogleCalendarSource;
 import com.example.actors.WSActor;
 import com.example.actors.MongoDbActor;
+import com.example.actors.entity.DisasterEntity;
+import com.example.actors.entity.ResponseItem;
 
 import static akka.http.javadsl.server.Directives.path;
 import static akka.http.javadsl.server.Directives.handleWebSocketMessages;
 
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
+import java.util.stream.Collectors;
 
 //#main-class
 public class DisasterAdviserApplication {
@@ -60,15 +62,7 @@ public class DisasterAdviserApplication {
                 ActorSystem.create(DisasterNasaSource.create(), "disaster-system");
         ActorSystem<MongoDbActor.Command> mongoDisasterSink =
                 ActorSystem.create(MongoDbActor.create(), "mongo-system");
-        disasterSystem.tell(new DisasterNasaSource.ReadDisasters(mongoDisasterSink));
-
-//        LocationToPointMapper.GeocodingLocation locationPoint = new LocationToPointMapper.GeocodingLocation();
-//        locationPoint.features = new ArrayList<>();
-//        LocationToPointMapper.GeocodingFeature geocodingFeature = new LocationToPointMapper.GeocodingFeature();
-//        geocodingFeature.geometry = new LocationToPointMapper.GeocodingGeometry();
-//        geocodingFeature.geometry.coordinates = new Double[]{148.42, -5.525};
-//        locationPoint.features.add(geocodingFeature);
-//        mongoDisasterSink.tell(new MongoDbActor.GetDisasterByLocation(locationPoint));
+//        disasterSystem.tell(new DisasterNasaSource.ReadDisasters(mongoDisasterSink));
 
         ActorSystem<GoogleCalendarSource.Command> calendarSystem =
                 ActorSystem.create(GoogleCalendarSource.create(), "calendar-system");
@@ -81,9 +75,9 @@ public class DisasterAdviserApplication {
 
         Materializer mat = Materializer.matFromSystem(wssystem);
 
-        Source<GoogleCalendarSource.CalendarResponseItem, ActorRef> responseItemSource = Source.actorRef(
+        Source<ResponseItem, ActorRef> responseItemSource = Source.actorRef(
                 elem -> {
-                    if (!(elem instanceof GoogleCalendarSource.CalendarResponseItem))
+                    if (!(elem instanceof ResponseItem))
                         return Optional.of(CompletionStrategy.immediately());
                     else return Optional.empty();
                 },
@@ -93,22 +87,34 @@ public class DisasterAdviserApplication {
         );
 
 
-        Pair<ActorRef, Source<GoogleCalendarSource.CalendarResponseItem, NotUsed>> calendarActorRefSourcePair = responseItemSource.preMaterialize(wssystem);
-        Pair<ActorRef, Source<GoogleCalendarSource.CalendarResponseItem, NotUsed>> locationActorRefSourcePair = responseItemSource.preMaterialize(wssystem);
+        Pair<ActorRef, Source<ResponseItem, NotUsed>> calendarActorRefSourcePair = responseItemSource.preMaterialize(wssystem);
+        Pair<ActorRef, Source<ResponseItem, NotUsed>> locationActorRefSourcePair = responseItemSource.preMaterialize(wssystem);
+        Pair<ActorRef, Source<ResponseItem, NotUsed>> disasterActorRefSourcePair = responseItemSource.preMaterialize(wssystem);
+
 
         responseItemSource.runWith(Sink.ignore(), wssystem);
-        locationActorRefSourcePair.second().runWith(Sink.ignore(), wssystem);
         calendarActorRefSourcePair.second().runWith(Sink.foreach(item -> locationSystem.tell(new LocationToPointMapper.GetPointByLocation(item, locationActorRefSourcePair.first()))), wssystem);
+        locationActorRefSourcePair.second().runWith(Sink.foreach(item -> mongoDisasterSink.tell(new MongoDbActor.GetDisasterByLocation(item, disasterActorRefSourcePair.first()))), wssystem);
+        disasterActorRefSourcePair.second().runWith(Sink.ignore(), wssystem);
 
         Flow<Message, Message, NotUsed> otherFlow =
                 Flow.fromSinkAndSource(
                         Sink.foreach(msg -> calendarSystem.tell(new GoogleCalendarSource.ReadEvents(calendarActorRefSourcePair.first(), msg.asTextMessage().getStrictText()))),
-                        locationActorRefSourcePair.second()
+                        disasterActorRefSourcePair.second()
                                 .map(resp -> {
-                                    System.out.println(resp.location.features.get(0).geometry.type);
-                                    System.out.println(resp.location.features.get(0).geometry.coordinates);
+                                    String title = resp.item.summary != null ? resp.item.summary : resp.item.id;
+                                    String message = "[" + resp.id + "] Your event: " + title + " at " + resp.item.location;
+                                    int size = resp.disasterEntities.size();
+                                    if (size == 1) {
+                                        message += " is dagerous. Details: " + resp.disasterEntities.get(0).getTitle();
 
-                                    return TextMessage.create("[" + resp.id + "] " + resp.item.location + " is " + resp.location.features.get(0).geometry.coordinates);
+                                    } else if (size > 1) {
+                                        String details = resp.disasterEntities.stream().map(DisasterEntity::getTitle).collect(Collectors.joining("\n"));
+                                        message += " is dangerous(" + resp.disasterEntities.size() + " events found). Details: \n" + details;
+                                    } else {
+                                        message += " is safe.";
+                                    }
+                                    return TextMessage.create(message);
                                 })
                 );
 

@@ -1,6 +1,5 @@
 package com.example.actors;
 
-import akka.Done;
 import akka.actor.ActorRef;
 import akka.actor.typed.ActorSystem;
 import akka.actor.typed.Behavior;
@@ -13,15 +12,14 @@ import akka.http.javadsl.Http;
 import akka.http.javadsl.marshallers.jackson.Jackson;
 import akka.http.javadsl.model.HttpEntity;
 import akka.http.javadsl.model.HttpRequest;
-import akka.http.javadsl.model.ws.TextMessage;
 import akka.http.javadsl.unmarshalling.Unmarshaller;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
+import com.example.actors.entity.ResponseItem;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -33,6 +31,7 @@ public class GoogleCalendarSource extends AbstractBehavior<GoogleCalendarSource.
     public static final class ReadEvents implements Command {
         final ActorRef replyTo;
         final String calendarId;
+
         public ReadEvents(ActorRef replyTo, String calendarId) {
             this.replyTo = replyTo;
             this.calendarId = calendarId;
@@ -44,6 +43,7 @@ public class GoogleCalendarSource extends AbstractBehavior<GoogleCalendarSource.
         public GoogleCalendarEvent() {
         }
 
+        public String id;
         public String kind;
         public String etag;
         public String summary;
@@ -59,24 +59,7 @@ public class GoogleCalendarSource extends AbstractBehavior<GoogleCalendarSource.
         public String id;
         public String location;
         public String status;
-        public String htmlLink;
-    }
-
-    public static class CalendarResponseItem {
-        public String id;
-        public GoogleCalendarEventItem item;
-        public LocationToPointMapper.GeocodingLocation location;
-
-        public CalendarResponseItem(String id, GoogleCalendarEventItem item) {
-            this.id = id;
-            this.item = item;
-        }
-
-        public CalendarResponseItem(String id, GoogleCalendarEventItem item, LocationToPointMapper.GeocodingLocation location) {
-            this.id = id;
-            this.item = item;
-            this.location = location;
-        }
+        public String summary;
     }
 
     public static final String GOOGLE_API = "https://www.googleapis.com";
@@ -104,7 +87,6 @@ public class GoogleCalendarSource extends AbstractBehavior<GoogleCalendarSource.
 
     private Behavior<GoogleCalendarSource.Command> onReadEvents(ReadEvents readEvents) {
         getContext().getLog().info("GoogleCalendarSource onReadDisasters");
-//        String id = "4qljo7l1qoo4km733ifm92vbog@group.calendar.google.com";
         String id = readEvents.calendarId;
         ActorSystem<Void> system = getContext().getSystem();
 
@@ -125,11 +107,10 @@ public class GoogleCalendarSource extends AbstractBehavior<GoogleCalendarSource.
                 })
                 .mapAsync(1, r -> unmarshaller.unmarshal(r.entity(), system))
                 .wireTap(r -> nextSyncToken.set(r.nextSyncToken))
-//              .map(r -> r.items.stream().filter(item -> !item.status.equals("cancelled")).collect(Collectors.toList()))
                 .map(r -> r.items.stream().filter(item -> item.location != null && item.status.equals("confirmed")).collect(Collectors.toList()))
                 .filter(items -> items.size() > 0)
                 .runWith(Sink.foreach(response -> response.forEach(item -> {
-                    CalendarResponseItem responseItem = new CalendarResponseItem(id, item);
+                    ResponseItem responseItem = new ResponseItem(id, item);
                     readEvents.replyTo.tell(responseItem, ActorRef.noSender());
                 })), system);
 

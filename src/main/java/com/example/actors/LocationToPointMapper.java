@@ -11,7 +11,6 @@ import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
 import akka.http.javadsl.Http;
 import akka.http.javadsl.marshallers.jackson.Jackson;
-import akka.http.javadsl.model.HttpEntity;
 import akka.http.javadsl.model.HttpRequest;
 import akka.http.javadsl.model.HttpResponse;
 import akka.http.javadsl.model.StatusCodes;
@@ -19,13 +18,11 @@ import akka.http.javadsl.unmarshalling.Unmarshaller;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
 import akka.util.ByteString;
+import com.example.actors.entity.ResponseItem;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-import java.io.UnsupportedEncodingException;
-import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 
@@ -47,11 +44,11 @@ public class LocationToPointMapper extends AbstractBehavior<LocationToPointMappe
     final Http http = Http.get(getContext().getSystem());
 
     public static final class GetPointByLocation implements LocationToPointMapper.Command {
-        public GoogleCalendarSource.CalendarResponseItem item;
+        public ResponseItem item;
         public final ActorRef replyTo;
 
         // final ActorRef<XXXXXAnalyzer.Command> replyTo;
-        public GetPointByLocation(GoogleCalendarSource.CalendarResponseItem item, ActorRef replyTo) {
+        public GetPointByLocation(ResponseItem item, ActorRef replyTo) {
             this.replyTo = replyTo;
             this.item = item;
         }
@@ -103,14 +100,13 @@ public class LocationToPointMapper extends AbstractBehavior<LocationToPointMappe
                         .flatMapConcat(this::extractEntityData)
                         .mapAsync(1, r -> unmarshaller.unmarshal(r, system))
                         .runWith(Sink.foreach(in -> {
-                            GoogleCalendarSource.CalendarResponseItem responseItem = new GoogleCalendarSource.CalendarResponseItem(
+                            ResponseItem responseItem = new ResponseItem(
                                     command.item.id,
                                     command.item.item,
                                     in
                             );
                             command.replyTo.tell(responseItem, ActorRef.noSender());
                         }), system);
-        completion.thenAccept(done -> System.out.println("Done!"));
         return this;
     }
 

@@ -2,6 +2,7 @@ package com.example.actors;
 
 import akka.Done;
 import akka.NotUsed;
+import akka.actor.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.PostStop;
 import akka.actor.typed.javadsl.AbstractBehavior;
@@ -16,6 +17,7 @@ import akka.stream.javadsl.Source;
 import com.example.actors.entity.CategoryEntity;
 import com.example.actors.entity.DisasterEntity;
 import com.example.actors.entity.LocationEntity;
+import com.example.actors.entity.ResponseItem;
 import com.mongodb.reactivestreams.client.MongoClient;
 import com.mongodb.reactivestreams.client.MongoClients;
 import com.mongodb.reactivestreams.client.MongoCollection;
@@ -56,9 +58,11 @@ public class MongoDbActor extends AbstractBehavior<MongoDbActor.Command> {
     }
 
     public static class GetDisasterByLocation implements Command {
-        public LocationToPointMapper.GeocodingLocation locationPoint;
-        public GetDisasterByLocation(LocationToPointMapper.GeocodingLocation locationPoint) {
-            this.locationPoint = locationPoint;
+        ResponseItem responseItem;
+        ActorRef replyTo;
+        public GetDisasterByLocation(ResponseItem responseItem, ActorRef replyTo) {
+            this.responseItem = responseItem;
+            this.replyTo = replyTo;
         }
     }
 
@@ -138,7 +142,7 @@ public class MongoDbActor extends AbstractBehavior<MongoDbActor.Command> {
 
     private Behavior<MongoDbActor.Command> onGetDisastersByLocation(GetDisasterByLocation getDisasterByLocation)
             throws InterruptedException, ExecutionException, TimeoutException {
-        LocationToPointMapper.GeocodingLocation locationPoint = getDisasterByLocation.locationPoint;
+        LocationToPointMapper.GeocodingLocation locationPoint = getDisasterByLocation.responseItem.location;
 
         final Source<DisasterEntity, NotUsed> source =
                 MongoSource.create(disastersColl.find(DisasterEntity.class));
@@ -149,6 +153,16 @@ public class MongoDbActor extends AbstractBehavior<MongoDbActor.Command> {
                     .filter(in -> in.getClosed() == null)
                     .filter(in -> isNearEvent(in.getLocation(), locationPoint))
                     .collect(Collectors.toList());
+
+            ResponseItem resp = new ResponseItem(
+                    getDisasterByLocation.responseItem.id,
+                    getDisasterByLocation.responseItem.item,
+                    getDisasterByLocation.responseItem.location,
+                    disastersNearEvent
+            );
+
+            getDisasterByLocation.replyTo.tell(resp, ActorRef.noSender());
+
         return this;
     }
 
@@ -157,13 +171,13 @@ public class MongoDbActor extends AbstractBehavior<MongoDbActor.Command> {
         Double disasterLatitude = coordinates.get(0);
         Double disasterLongitude = coordinates.get(1);
 
-        Double[] geometry = locationPoint.features.get(0).geometry.coordinates;
-        Double eventLatitude = geometry[0];
-        Double eventLongitude = geometry[1];
+        List<Double> geometry = locationPoint.features.get(0).geometry.coordinates;
+        Double eventLatitude = geometry.get(0);
+        Double eventLongitude = geometry.get(1);
 
         // in meters
         double distance = distance(disasterLatitude, eventLatitude, disasterLongitude, eventLongitude, 0.0, 0.0);
-        return distance < 10000;
+        return distance < 50000;
     }
 
     /**
