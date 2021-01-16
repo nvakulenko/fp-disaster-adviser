@@ -54,7 +54,7 @@ public class DisasterNasaSource extends AbstractBehavior<DisasterNasaSource.Comm
         public NasaDisasterGeometry(){}
         public String date;
         public String type;
-        public BigDecimal[] coordinates;
+        public Double[] coordinates;
     }
 
     public static final class ReadDisasters implements Command {

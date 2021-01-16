@@ -1,7 +1,7 @@
 package com.example.actors.entity;
 
 
-import java.math.BigDecimal;
+import java.util.List;
 
 public class LocationEntity {
     public String getType() {
@@ -14,13 +14,13 @@ public class LocationEntity {
 
     String type;
 
-    public BigDecimal[] getCoordinates() {
+    public List<Double> getCoordinates() {
         return coordinates;
     }
 
-    public void setCoordinates(BigDecimal[] coordinates) {
+    public void setCoordinates(List<Double> coordinates) {
         this.coordinates = coordinates;
     }
 
-    BigDecimal[] coordinates;
+    List<Double> coordinates;
 }

@@ -22,6 +22,7 @@ import org.bson.codecs.configuration.CodecRegistries;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
@@ -61,7 +62,12 @@ public class MongoDbSink extends AbstractBehavior<MongoDbSink.Command> {
     private MongoDbSink(ActorContext<Command> context) {
         super(context);
 
-        PojoCodecProvider codecProvider = PojoCodecProvider.builder().register(DisasterEntity.class).build();
+        PojoCodecProvider codecProvider = PojoCodecProvider.builder()
+                .register(DisasterEntity.class)
+                .register(LocationEntity.class)
+                .register(CategoryEntity.class)
+                .build();
+
         CodecRegistry codecRegistry = CodecRegistries.fromProviders(codecProvider, new ValueCodecProvider());
 
         client = MongoClients.create("mongodb://localhost:27017");
@@ -85,7 +91,7 @@ public class MongoDbSink extends AbstractBehavior<MongoDbSink.Command> {
         DisasterNasaSource.NasaDisasterEvent disaster = writeDisasters.getDisaster();
         // for each Point we create separate Disaster entity in BD - for easier querying
         List<DisasterEntity> entities = disaster.geometry.stream()
-                .filter(in -> in.type != null && "Point".equals(in.type)) // take into account just "Point" locations
+                .filter(in -> "Point".equals(in.type)) // take into account just "Point" locations
                 .map(in -> getDisasterEntity(disaster, in))
                 .collect(Collectors.toList());
 
@@ -104,7 +110,9 @@ public class MongoDbSink extends AbstractBehavior<MongoDbSink.Command> {
 
         LocationEntity locationEntity = new LocationEntity();
         locationEntity.setType(in.type);
-        locationEntity.setCoordinates(in.coordinates);
+        locationEntity.setCoordinates(Arrays.asList(in.coordinates.clone()));
+
+        disasterEntity.setLocation(locationEntity);
 
         disasterEntity.setCategories(disaster.categories.stream().map(category -> {
             CategoryEntity categoryEntity = new CategoryEntity();

@@ -14,13 +14,14 @@ import akka.stream.Materializer;
 import akka.stream.OverflowStrategy;
 import akka.stream.javadsl.*;
 import com.example.actors.*;
+import com.example.actors.DisasterNasaSource;
+import com.example.actors.GoogleCalendarSource;
+import com.example.actors.WSActor;
+import com.example.actors.MongoDbSink;
 
 import static akka.http.javadsl.server.Directives.path;
 import static akka.http.javadsl.server.Directives.handleWebSocketMessages;
-//import akka.actor.ActorSystem;
 import java.net.InetSocketAddress;
-import java.time.Duration;
-import java.util.Collections;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 
@@ -57,7 +58,7 @@ public class DisasterAdviserApplication {
         ActorSystem<DisasterNasaSource.Command> disasterSystem =
                 ActorSystem.create(DisasterNasaSource.create(), "disaster-system");
         ActorSystem<MongoDbSink.Command> mongoDisasterSink =
-                ActorSystem.create(MongoDbSink.create(), "mongo-write-system");
+                ActorSystem.create(MongoDbSink.create(), "mongo-system");
         disasterSystem.tell(new DisasterNasaSource.ReadDisasters(mongoDisasterSink));
 
         ActorSystem<GoogleCalendarSource.Command> calendarSystem =
