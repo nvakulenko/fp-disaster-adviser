@@ -1,6 +1,7 @@
 package com.example.actors;
 
 import akka.Done;
+import akka.actor.ActorRef;
 import akka.actor.typed.ActorSystem;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.PostStop;
@@ -20,7 +21,10 @@ import akka.stream.javadsl.Source;
 import akka.util.ByteString;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
@@ -43,14 +47,13 @@ public class LocationToPointMapper extends AbstractBehavior<LocationToPointMappe
     final Http http = Http.get(getContext().getSystem());
 
     public static final class GetPointByLocation implements LocationToPointMapper.Command {
-        private String location;
-        private Instant date;
+        public GoogleCalendarSource.CalendarResponseItem item;
+        public final ActorRef replyTo;
 
         // final ActorRef<XXXXXAnalyzer.Command> replyTo;
-        public GetPointByLocation(String location, Instant date) {
-            // this.replyTo = replyTo;
-            this.location = location;
-            this.date = date;
+        public GetPointByLocation(GoogleCalendarSource.CalendarResponseItem item, ActorRef replyTo) {
+            this.replyTo = replyTo;
+            this.item = item;
         }
     }
 
@@ -67,7 +70,7 @@ public class LocationToPointMapper extends AbstractBehavior<LocationToPointMappe
     public static class GeocodingLocation {
         public GeocodingLocation(){}
         public List<GeocodingFeature> features;
-        public BigDecimal relevance;
+        public Double relevance;
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -80,12 +83,13 @@ public class LocationToPointMapper extends AbstractBehavior<LocationToPointMappe
     public static class GeocodingGeometry {
         public GeocodingGeometry(){}
         public String type;
-        public BigDecimal[] coordinates;
+        public List<Double> coordinates;
     }
 
     private Behavior<Command> onGetPointByLocation(GetPointByLocation command) {
         // get location coordinates
-        String geocodingUrl = String.format(GEOCODING_URL, command.location, GEOCODING_TOKEN);
+        String location = URLEncoder.encode(command.item.item.location, StandardCharsets.UTF_8);
+        String geocodingUrl = String.format(GEOCODING_URL, location, GEOCODING_TOKEN);
 
         Unmarshaller<ByteString, LocationToPointMapper.GeocodingLocation> unmarshaller =
                 Jackson.byteStringUnmarshaller(LocationToPointMapper.GeocodingLocation.class);
@@ -99,10 +103,14 @@ public class LocationToPointMapper extends AbstractBehavior<LocationToPointMappe
                         .flatMapConcat(this::extractEntityData)
                         .mapAsync(1, r -> unmarshaller.unmarshal(r, system))
                         .runWith(Sink.foreach(in -> {
-                            System.out.println("features = " + in.relevance);
-                            //readDisasters.replyTo.tell(new MongoDbSink.WriteDisaster(in))})
+                            GoogleCalendarSource.CalendarResponseItem responseItem = new GoogleCalendarSource.CalendarResponseItem(
+                                    command.item.id,
+                                    command.item.item,
+                                    in
+                            );
+                            command.replyTo.tell(responseItem, ActorRef.noSender());
                         }), system);
-        completion.thenAccept(done -> { System.out.println("Done!"); });
+        completion.thenAccept(done -> System.out.println("Done!"));
         return this;
     }
 

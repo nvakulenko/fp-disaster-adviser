@@ -62,6 +62,23 @@ public class GoogleCalendarSource extends AbstractBehavior<GoogleCalendarSource.
         public String htmlLink;
     }
 
+    public static class CalendarResponseItem {
+        public String id;
+        public GoogleCalendarEventItem item;
+        public LocationToPointMapper.GeocodingLocation location;
+
+        public CalendarResponseItem(String id, GoogleCalendarEventItem item) {
+            this.id = id;
+            this.item = item;
+        }
+
+        public CalendarResponseItem(String id, GoogleCalendarEventItem item, LocationToPointMapper.GeocodingLocation location) {
+            this.id = id;
+            this.item = item;
+            this.location = location;
+        }
+    }
+
     public static final String GOOGLE_API = "https://www.googleapis.com";
     public static final String key = "AIzaSyCKYFpTRY-IhXNrsgjRvHwbICk2F3fOt1k";
     final Http http = Http.get(getContext().getSystem());
@@ -107,18 +124,14 @@ public class GoogleCalendarSource extends AbstractBehavior<GoogleCalendarSource.
                     return http.singleRequest(httpRequest);
                 })
                 .mapAsync(1, r -> unmarshaller.unmarshal(r.entity(), system))
-                .wireTap(r -> {
-                    nextSyncToken.set(r.nextSyncToken);
-                })
+                .wireTap(r -> nextSyncToken.set(r.nextSyncToken))
 //              .map(r -> r.items.stream().filter(item -> !item.status.equals("cancelled")).collect(Collectors.toList()))
                 .map(r -> r.items.stream().filter(item -> item.location != null && item.status.equals("confirmed")).collect(Collectors.toList()))
                 .filter(items -> items.size() > 0)
-                .runWith(Sink.foreach(response -> {
-                    response.forEach(item -> {
-                        TextMessage message = TextMessage.create("[" + id + "]: " + item.id + " " + item.location);
-                        readEvents.replyTo.tell(message, ActorRef.noSender());
-                    });
-                }), system);
+                .runWith(Sink.foreach(response -> response.forEach(item -> {
+                    CalendarResponseItem responseItem = new CalendarResponseItem(id, item);
+                    readEvents.replyTo.tell(responseItem, ActorRef.noSender());
+                })), system);
 
         return this;
     }

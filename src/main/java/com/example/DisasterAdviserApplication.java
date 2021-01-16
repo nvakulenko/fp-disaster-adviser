@@ -21,6 +21,7 @@ import com.example.actors.MongoDbSink;
 
 import static akka.http.javadsl.server.Directives.path;
 import static akka.http.javadsl.server.Directives.handleWebSocketMessages;
+
 import java.net.InetSocketAddress;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
@@ -46,7 +47,7 @@ public class DisasterAdviserApplication {
     }
     // #start-http-server
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
         // min
         // 1 - NASA API <- (pull) - Disaster Extractor - OUT -> DB (Mongo Docker)
         //                                             - OUT -> Web Socket -> (PUSH) Final App client
@@ -66,16 +67,16 @@ public class DisasterAdviserApplication {
 
         ActorSystem<LocationToPointMapper.Command> locationSystem =
                 ActorSystem.create(LocationToPointMapper.create(), "location-system");
-        locationSystem.tell(new LocationToPointMapper.GetPointByLocation("Lviv", null));
 
         ActorSystem<WSActor.Command> wssystem =
                 ActorSystem.create(WSActor.create(), "ws");
 
         Materializer mat = Materializer.matFromSystem(wssystem);
 
-        Source<Message, ActorRef> someSource = Source.actorRef(
+        Source<GoogleCalendarSource.CalendarResponseItem, ActorRef> responseItemSource = Source.actorRef(
                 elem -> {
-                    if (!(elem instanceof TextMessage)) return Optional.of(CompletionStrategy.immediately());
+                    if (!(elem instanceof GoogleCalendarSource.CalendarResponseItem))
+                        return Optional.of(CompletionStrategy.immediately());
                     else return Optional.empty();
                 },
                 elem -> Optional.empty(),
@@ -83,17 +84,24 @@ public class DisasterAdviserApplication {
                 OverflowStrategy.dropNew()
         );
 
-        Pair<ActorRef, Source<Message, NotUsed>> actorRefSourcePair = someSource.preMaterialize(wssystem);
 
-        someSource.runWith(Sink.ignore(), wssystem);
-        actorRefSourcePair.second().runWith(Sink.ignore(), wssystem);
+        Pair<ActorRef, Source<GoogleCalendarSource.CalendarResponseItem, NotUsed>> calendarActorRefSourcePair = responseItemSource.preMaterialize(wssystem);
+        Pair<ActorRef, Source<GoogleCalendarSource.CalendarResponseItem, NotUsed>> locationActorRefSourcePair = responseItemSource.preMaterialize(wssystem);
+
+        responseItemSource.runWith(Sink.ignore(), wssystem);
+        locationActorRefSourcePair.second().runWith(Sink.ignore(), wssystem);
+        calendarActorRefSourcePair.second().runWith(Sink.foreach(item -> locationSystem.tell(new LocationToPointMapper.GetPointByLocation(item, locationActorRefSourcePair.first()))), wssystem);
 
         Flow<Message, Message, NotUsed> otherFlow =
                 Flow.fromSinkAndSource(
-                        Sink.foreach(msg -> {
-                            calendarSystem.tell(new GoogleCalendarSource.ReadEvents(actorRefSourcePair.first(), msg.asTextMessage().getStrictText()));
-                        }),
-                        actorRefSourcePair.second()
+                        Sink.foreach(msg -> calendarSystem.tell(new GoogleCalendarSource.ReadEvents(calendarActorRefSourcePair.first(), msg.asTextMessage().getStrictText()))),
+                        locationActorRefSourcePair.second()
+                                .map(resp -> {
+                                    System.out.println(resp.location.features.get(0).geometry.type);
+                                    System.out.println(resp.location.features.get(0).geometry.coordinates);
+
+                                    return TextMessage.create("[" + resp.id + "] " + resp.item.location + " is " + resp.location.features.get(0).geometry.coordinates);
+                                })
                 );
 
         Route route = path("calendar", () ->
