@@ -62,7 +62,7 @@ public class DisasterAdviserApplication {
                 ActorSystem.create(DisasterNasaSource.create(), "disaster-system");
         ActorSystem<MongoDbActor.Command> mongoDisasterSink =
                 ActorSystem.create(MongoDbActor.create(), "mongo-system");
-//        disasterSystem.tell(new DisasterNasaSource.ReadDisasters(mongoDisasterSink));
+        disasterSystem.tell(new DisasterNasaSource.ReadDisasters(mongoDisasterSink));
 
         ActorSystem<GoogleCalendarSource.Command> calendarSystem =
                 ActorSystem.create(GoogleCalendarSource.create(), "calendar-system");
